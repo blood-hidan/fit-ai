@@ -2,8 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Dumbbell, Play, Clock, Zap, RefreshCw } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { useLocalProfile } from "@/hooks/useLocalProfile";
-import { generateWorkoutPlan, type WorkoutPlan, type WorkoutDay } from "@/lib/workout-generator";
+import { useProfile } from "@/hooks/useProfile";
+import { generateWorkoutPlan, type WorkoutPlan, type WorkoutDay, type UserProfile } from "@/lib/workout-generator";
 
 function WorkoutDayCard({ day, index }: { day: WorkoutDay; index: number }) {
   const [open, setOpen] = useState(false);
@@ -84,12 +84,26 @@ function WorkoutDayCard({ day, index }: { day: WorkoutDay; index: number }) {
 }
 
 export default function WorkoutsPage() {
-  const { profile, isProfileComplete } = useLocalProfile();
+  const { profile } = useProfile();
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
+  const isProfileComplete = !!profile?.name;
 
   const handleGenerate = () => {
-    const newPlan = generateWorkoutPlan(profile);
-    setPlan(newPlan);
+    if (!profile) return;
+    const mapped: UserProfile = {
+      name: profile.name,
+      age: profile.age,
+      weight: Number(profile.weight),
+      height: Number(profile.height),
+      level: profile.level,
+      goal: profile.goal,
+      bodyType: profile.body_type,
+      sleepHours: Number(profile.sleep_hours),
+      sleepQuality: profile.sleep_quality,
+      weeklyFrequency: profile.weekly_frequency,
+      trainingTime: profile.training_time,
+    };
+    setPlan(generateWorkoutPlan(mapped));
   };
 
   return (

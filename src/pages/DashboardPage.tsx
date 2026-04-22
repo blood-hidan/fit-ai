@@ -2,12 +2,16 @@ import { motion } from "framer-motion";
 import { TrendingUp, Flame, Target, Calendar, Award, Zap } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
-import { useLocalProfile } from "@/hooks/useLocalProfile";
+import { useProfile } from "@/hooks/useProfile";
 import { calculateCalories } from "@/lib/workout-generator";
 
 export default function DashboardPage() {
-  const { profile } = useLocalProfile();
-  const calories = calculateCalories(profile.weight, profile.height, profile.age, profile.goal);
+  const { profile } = useProfile();
+  const weight = Number(profile?.weight ?? 70);
+  const height = Number(profile?.height ?? 170);
+  const age = profile?.age ?? 25;
+  const goal = profile?.goal ?? "hipertrofia";
+  const calories = calculateCalories(weight, height, age, goal);
 
   const weekData = [65, 80, 45, 90, 70, 85, 0];
   const maxVal = Math.max(...weekData);
@@ -43,7 +47,7 @@ export default function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <StatCard icon={Flame} label="Queimadas" value="2.940" subtitle="esta semana" variant="primary" />
-        <StatCard icon={Target} label="Objetivo" value={profile.goal === "hipertrofia" ? "Hipertrofia" : profile.goal === "emagrecimento" ? "Emagrecer" : "Condição"} variant="accent" />
+        <StatCard icon={Target} label="Objetivo" value={goal === "hipertrofia" ? "Hipertrofia" : goal === "emagrecimento" ? "Emagrecer" : "Condição"} variant="accent" />
         <StatCard icon={Calendar} label="Treinos" value="5/7" subtitle="esta semana" />
         <StatCard icon={Award} label="Recorde" value="12 dias" subtitle="melhor sequência" />
       </div>
@@ -80,15 +84,15 @@ export default function DashboardPage() {
         <h2 className="text-sm font-bold font-display mb-3">Dados Corporais</h2>
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-2xl font-bold font-display text-gradient">{profile.weight}</p>
+            <p className="text-2xl font-bold font-display text-gradient">{weight}</p>
             <p className="text-[10px] text-muted-foreground">kg</p>
           </div>
           <div>
-            <p className="text-2xl font-bold font-display text-gradient">{profile.height}</p>
+            <p className="text-2xl font-bold font-display text-gradient">{height}</p>
             <p className="text-[10px] text-muted-foreground">cm</p>
           </div>
           <div>
-            <p className="text-2xl font-bold font-display text-gradient">{(profile.weight / (profile.height / 100) ** 2).toFixed(1)}</p>
+            <p className="text-2xl font-bold font-display text-gradient">{(weight / (height / 100) ** 2).toFixed(1)}</p>
             <p className="text-[10px] text-muted-foreground">IMC</p>
           </div>
         </div>
