@@ -1,12 +1,12 @@
-import { Home, Dumbbell, Users, User, BarChart3 } from "lucide-react";
+import { Home, Dumbbell, Bot, Apple, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Dumbbell, label: "Treinos", path: "/workouts" },
-  { icon: BarChart3, label: "Progresso", path: "/dashboard" },
-  { icon: Users, label: "Social", path: "/community" },
+  { icon: Bot, label: "Coach", path: "/chat" },
+  { icon: Apple, label: "Nutrição", path: "/nutrition" },
   { icon: User, label: "Perfil", path: "/profile" },
 ];
 

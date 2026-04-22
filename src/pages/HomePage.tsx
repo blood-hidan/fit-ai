@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { Dumbbell, Flame, Footprints, Timer, TrendingUp, Zap, Moon, Trophy } from "lucide-react";
+import { Dumbbell, Flame, Footprints, Timer, TrendingUp, Zap, Moon, Bot, Apple, LogOut } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import StreakBadge from "@/components/StreakBadge";
-import { useLocalProfile } from "@/hooks/useLocalProfile";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
 const quotes = [
@@ -15,13 +16,15 @@ const quotes = [
 ];
 
 export default function HomePage() {
-  const { profile, isProfileComplete } = useLocalProfile();
+  const { profile, loading } = useProfile();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
 
+  const isProfileComplete = !!profile?.name;
+
   return (
     <div className="min-h-screen pb-24 px-4 pt-6 max-w-lg mx-auto">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -30,13 +33,22 @@ export default function HomePage() {
         <div>
           <p className="text-sm text-muted-foreground">Olá,</p>
           <h1 className="text-2xl font-bold font-display">
-            {isProfileComplete ? profile.name : "Atleta"} <span className="text-gradient">MultiFit</span>
+            {isProfileComplete ? profile!.name.split(" ")[0] : "Atleta"}{" "}
+            <span className="text-gradient">MultiFit</span>
           </h1>
         </div>
-        <StreakBadge days={7} />
+        <div className="flex items-center gap-2">
+          <StreakBadge days={7} />
+          <button
+            onClick={() => signOut()}
+            className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+            title="Sair"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
       </motion.div>
 
-      {/* Motivational Quote */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -46,8 +58,7 @@ export default function HomePage() {
         <p className="text-sm text-foreground/80 italic font-body leading-relaxed">{quote}</p>
       </motion.div>
 
-      {/* Profile Setup CTA */}
-      {!isProfileComplete && (
+      {!isProfileComplete && !loading && (
         <motion.button
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -64,22 +75,25 @@ export default function HomePage() {
         </motion.button>
       )}
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <StatCard icon={Flame} label="Calorias" value="420" subtitle="queimadas hoje" variant="primary" />
         <StatCard icon={Footprints} label="Passos" value="6.230" subtitle="de 10.000" variant="accent" />
         <StatCard icon={Timer} label="Tempo Ativo" value="45 min" subtitle="hoje" />
-        <StatCard icon={Moon} label="Sono" value={`${profile.sleepHours}h`} subtitle={profile.sleepQuality} />
+        <StatCard
+          icon={Moon}
+          label="Sono"
+          value={`${profile?.sleep_hours ?? 7}h`}
+          subtitle={profile?.sleep_quality ?? "boa"}
+        />
       </div>
 
-      {/* Quick Actions */}
       <h2 className="text-lg font-bold font-display mb-3">Acesso Rápido</h2>
       <div className="grid grid-cols-2 gap-3 mb-6">
         {[
           { icon: Dumbbell, label: "Meu Treino", path: "/workouts", color: "primary" },
+          { icon: Bot, label: "Falar c/ Coach", path: "/chat", color: "accent" },
+          { icon: Apple, label: "Nutrição", path: "/nutrition", color: "primary" },
           { icon: TrendingUp, label: "Progresso", path: "/dashboard", color: "accent" },
-          { icon: Trophy, label: "Conquistas", path: "/profile", color: "primary" },
-          { icon: Zap, label: "Gerar Treino", path: "/workouts", color: "accent" },
         ].map((item, i) => (
           <motion.button
             key={item.label}
@@ -97,7 +111,6 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Weekly Progress */}
       <h2 className="text-lg font-bold font-display mb-3">Esta Semana</h2>
       <div className="glass rounded-2xl p-4 mb-4">
         <div className="flex justify-between mb-3">
