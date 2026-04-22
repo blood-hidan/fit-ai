@@ -14,7 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          age: number | null
+          allergies: string | null
+          avatar_url: string | null
+          bio: string | null
+          body_type: string | null
+          created_at: string
+          dietary_restrictions: string | null
+          goal: string | null
+          height: number | null
+          id: string
+          level: string | null
+          name: string
+          sleep_hours: number | null
+          sleep_quality: string | null
+          training_time: string | null
+          updated_at: string
+          user_id: string
+          weekly_frequency: number | null
+          weight: number | null
+        }
+        Insert: {
+          age?: number | null
+          allergies?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          body_type?: string | null
+          created_at?: string
+          dietary_restrictions?: string | null
+          goal?: string | null
+          height?: number | null
+          id?: string
+          level?: string | null
+          name?: string
+          sleep_hours?: number | null
+          sleep_quality?: string | null
+          training_time?: string | null
+          updated_at?: string
+          user_id: string
+          weekly_frequency?: number | null
+          weight?: number | null
+        }
+        Update: {
+          age?: number | null
+          allergies?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          body_type?: string | null
+          created_at?: string
+          dietary_restrictions?: string | null
+          goal?: string | null
+          height?: number | null
+          id?: string
+          level?: string | null
+          name?: string
+          sleep_hours?: number | null
+          sleep_quality?: string | null
+          training_time?: string | null
+          updated_at?: string
+          user_id?: string
+          weekly_frequency?: number | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

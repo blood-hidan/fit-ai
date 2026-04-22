@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Save, ChevronRight } from "lucide-react";
+import { User, Save, Loader2 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { useLocalProfile } from "@/hooks/useLocalProfile";
+import { useProfile } from "@/hooks/useProfile";
 import { toast } from "@/hooks/use-toast";
 
 const levels = [
@@ -20,9 +20,9 @@ const goals = [
 ] as const;
 
 const bodyTypes = [
-  { value: "ectomorfo", label: "Ectomorfo", desc: "Magro, dificuldade para ganhar peso" },
-  { value: "mesomorfo", label: "Mesomorfo", desc: "Atlético, ganha músculo fácil" },
-  { value: "endomorfo", label: "Endomorfo", desc: "Tendência a acumular gordura" },
+  { value: "ectomorfo", label: "Ectomorfo" },
+  { value: "mesomorfo", label: "Mesomorfo" },
+  { value: "endomorfo", label: "Endomorfo" },
 ] as const;
 
 const sleepQualities = [
@@ -38,7 +38,7 @@ const trainingTimes = [
   { value: "noite", label: "🌙 Noite" },
 ] as const;
 
-function SelectChips<T extends string>({ options, value, onChange }: { options: readonly { value: T; label: string; desc?: string }[]; value: T; onChange: (v: T) => void }) {
+function SelectChips<T extends string>({ options, value, onChange }: { options: readonly { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map(opt => (
@@ -59,123 +59,158 @@ function SelectChips<T extends string>({ options, value, onChange }: { options: 
 }
 
 export default function ProfilePage() {
-  const { profile, updateProfile } = useLocalProfile();
-  const [saved, setSaved] = useState(false);
+  const { profile, updateProfile, loading } = useProfile();
+  const [local, setLocal] = useState(profile);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    setSaved(true);
-    toast({ title: "Perfil salvo! ✅", description: "Seus dados foram atualizados." });
-    setTimeout(() => setSaved(false), 2000);
+  useEffect(() => {
+    if (profile) setLocal(profile);
+  }, [profile]);
+
+  if (loading || !local) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const set = (updates: Partial<typeof local>) => setLocal({ ...local!, ...updates });
+
+  const handleSave = async () => {
+    setSaving(true);
+    await updateProfile({
+      name: local.name,
+      bio: local.bio,
+      age: local.age,
+      weight: local.weight,
+      height: local.height,
+      level: local.level,
+      goal: local.goal,
+      body_type: local.body_type,
+      sleep_hours: local.sleep_hours,
+      sleep_quality: local.sleep_quality,
+      weekly_frequency: local.weekly_frequency,
+      training_time: local.training_time,
+    });
+    setSaving(false);
+    toast({ title: "Perfil salvo! ✅" });
   };
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold font-display mb-6">Meu <span className="text-gradient">Perfil</span></h1>
 
-      {/* Avatar */}
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center mb-8">
-        <div className="w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center mb-3 shadow-neon">
-          <User size={40} className="text-primary-foreground" />
+        <div className="w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center mb-3 shadow-neon overflow-hidden">
+          {local.avatar_url ? (
+            <img src={local.avatar_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <User size={40} className="text-primary-foreground" />
+          )}
         </div>
-        <p className="font-bold font-display text-lg">{profile.name || "Configure seu perfil"}</p>
-        <p className="text-xs text-muted-foreground">{profile.level === "iniciante" ? "Iniciante" : profile.level === "intermediario" ? "Intermediário" : "Avançado"} • {profile.bodyType}</p>
+        <p className="font-bold font-display text-lg">{local.name || "Sem nome"}</p>
+        <p className="text-xs text-muted-foreground capitalize">{local.level} • {local.body_type}</p>
       </motion.div>
 
       <div className="space-y-6">
-        {/* Name */}
         <div>
           <label className="text-xs font-bold text-muted-foreground mb-2 block">Nome</label>
           <input
             type="text"
-            value={profile.name}
-            onChange={e => updateProfile({ name: e.target.value })}
+            value={local.name}
+            onChange={e => set({ name: e.target.value.slice(0, 60) })}
             placeholder="Seu nome"
             className="w-full bg-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
 
-        {/* Basic Info */}
+        <div>
+          <label className="text-xs font-bold text-muted-foreground mb-2 block">Bio</label>
+          <textarea
+            value={local.bio || ""}
+            onChange={e => set({ bio: e.target.value.slice(0, 200) })}
+            placeholder="Conte um pouco sobre você..."
+            rows={2}
+            className="w-full bg-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+          />
+        </div>
+
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Idade", key: "age" as const, suffix: "anos" },
-            { label: "Peso", key: "weight" as const, suffix: "kg" },
-            { label: "Altura", key: "height" as const, suffix: "cm" },
+            { label: "Idade", key: "age" as const },
+            { label: "Peso (kg)", key: "weight" as const },
+            { label: "Altura (cm)", key: "height" as const },
           ].map(field => (
             <div key={field.key}>
               <label className="text-xs font-bold text-muted-foreground mb-2 block">{field.label}</label>
               <input
                 type="number"
-                value={profile[field.key]}
-                onChange={e => updateProfile({ [field.key]: Number(e.target.value) })}
+                value={local[field.key] as number}
+                onChange={e => set({ [field.key]: Number(e.target.value) } as any)}
                 className="w-full bg-secondary rounded-xl px-3 py-3 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
           ))}
         </div>
 
-        {/* Level */}
         <div>
           <label className="text-xs font-bold text-muted-foreground mb-2 block">Nível</label>
-          <SelectChips options={levels} value={profile.level} onChange={v => updateProfile({ level: v })} />
+          <SelectChips options={levels} value={local.level} onChange={v => set({ level: v })} />
         </div>
 
-        {/* Goal */}
         <div>
           <label className="text-xs font-bold text-muted-foreground mb-2 block">Objetivo</label>
-          <SelectChips options={goals} value={profile.goal} onChange={v => updateProfile({ goal: v })} />
+          <SelectChips options={goals} value={local.goal} onChange={v => set({ goal: v })} />
         </div>
 
-        {/* Body Type */}
         <div>
           <label className="text-xs font-bold text-muted-foreground mb-2 block">Biotipo</label>
-          <SelectChips options={bodyTypes} value={profile.bodyType} onChange={v => updateProfile({ bodyType: v })} />
+          <SelectChips options={bodyTypes} value={local.body_type} onChange={v => set({ body_type: v })} />
         </div>
 
-        {/* Sleep */}
         <div>
-          <label className="text-xs font-bold text-muted-foreground mb-2 block">Horas de Sono</label>
+          <label className="text-xs font-bold text-muted-foreground mb-2 block">Horas de Sono: {local.sleep_hours}h</label>
           <input
             type="range"
             min={4}
             max={10}
-            value={profile.sleepHours}
-            onChange={e => updateProfile({ sleepHours: Number(e.target.value) })}
+            value={local.sleep_hours}
+            onChange={e => set({ sleep_hours: Number(e.target.value) })}
             className="w-full accent-primary"
           />
-          <p className="text-xs text-muted-foreground text-center mt-1">{profile.sleepHours} horas</p>
         </div>
 
         <div>
           <label className="text-xs font-bold text-muted-foreground mb-2 block">Qualidade do Sono</label>
-          <SelectChips options={sleepQualities} value={profile.sleepQuality} onChange={v => updateProfile({ sleepQuality: v })} />
+          <SelectChips options={sleepQualities} value={local.sleep_quality} onChange={v => set({ sleep_quality: v })} />
         </div>
 
-        {/* Training */}
         <div>
-          <label className="text-xs font-bold text-muted-foreground mb-2 block">Frequência Semanal: {profile.weeklyFrequency}x</label>
+          <label className="text-xs font-bold text-muted-foreground mb-2 block">Frequência Semanal: {local.weekly_frequency}x</label>
           <input
             type="range"
             min={3}
             max={6}
-            value={profile.weeklyFrequency}
-            onChange={e => updateProfile({ weeklyFrequency: Number(e.target.value) })}
+            value={local.weekly_frequency}
+            onChange={e => set({ weekly_frequency: Number(e.target.value) })}
             className="w-full accent-primary"
           />
         </div>
 
         <div>
           <label className="text-xs font-bold text-muted-foreground mb-2 block">Horário do Treino</label>
-          <SelectChips options={trainingTimes} value={profile.trainingTime} onChange={v => updateProfile({ trainingTime: v })} />
+          <SelectChips options={trainingTimes} value={local.training_time} onChange={v => set({ training_time: v })} />
         </div>
 
-        {/* Save */}
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={handleSave}
-          className="w-full bg-gradient-primary text-primary-foreground font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-neon"
+          disabled={saving}
+          className="w-full bg-gradient-primary text-primary-foreground font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-neon disabled:opacity-60"
         >
-          <Save size={18} />
-          {saved ? "Salvo! ✅" : "Salvar Perfil"}
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+          {saving ? "Salvando..." : "Salvar Perfil"}
         </motion.button>
       </div>
 
