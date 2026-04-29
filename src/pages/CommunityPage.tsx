@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Send, Plus, ImagePlus, Repeat2, Share2, X, Loader2, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Send, Plus, ImagePlus, Repeat2, Share2, X, Loader2, Trash2, Flag, MoreHorizontal } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +57,11 @@ export default function CommunityPage() {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("Spam");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -291,6 +296,27 @@ export default function CommunityPage() {
     if (error) return toast.error("Erro ao excluir");
     setPosts((prev) => prev.filter((p) => p.id !== id));
     toast.success("Post excluído");
+  }
+
+  async function submitReport() {
+    if (!user || !reportPostId) return;
+    setReporting(true);
+    const { error } = await supabase.from("post_reports").insert({
+      post_id: reportPostId,
+      user_id: user.id,
+      reason: reportReason,
+      details: reportDetails.trim() || null,
+    });
+    setReporting(false);
+    if (error) {
+      if (error.code === "23505") toast.error("Você já denunciou este post");
+      else toast.error("Erro ao denunciar");
+      return;
+    }
+    toast.success("Denúncia enviada. Obrigado!");
+    setReportPostId(null);
+    setReportReason("Spam");
+    setReportDetails("");
   }
 
   return (
