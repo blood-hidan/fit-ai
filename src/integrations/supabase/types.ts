@@ -99,6 +99,33 @@ export type Database = {
           },
         ]
       }
+      post_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          post_id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           caption: string | null
@@ -212,6 +239,42 @@ export type Database = {
           user_id?: string
           weekly_frequency?: number | null
           weight?: number | null
+        }
+        Relationships: []
+      }
+      runs: {
+        Row: {
+          avg_pace_s_per_km: number | null
+          calories: number | null
+          created_at: string
+          distance_m: number
+          duration_s: number
+          id: string
+          path: Json
+          title: string
+          user_id: string
+        }
+        Insert: {
+          avg_pace_s_per_km?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          id?: string
+          path?: Json
+          title?: string
+          user_id: string
+        }
+        Update: {
+          avg_pace_s_per_km?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          id?: string
+          path?: Json
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
