@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Dumbbell, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
+import { Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import logo from "@/assets/multifit-logo.png";
 
 const signUpSchema = z.object({
   name: z.string().trim().min(2, "Mínimo 2 caracteres").max(60),
@@ -94,12 +95,11 @@ export default function AuthPage() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-primary items-center justify-center mb-3 shadow-neon">
-            <Dumbbell size={30} className="text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-bold font-display">
-            <span className="text-gradient">MultiFit</span>
-          </h1>
+          <img
+            src={logo}
+            alt="MultiFit"
+            className="w-40 h-40 mx-auto object-contain drop-shadow-[0_0_30px_hsl(var(--primary)/0.4)]"
+          />
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "login" ? "Entre para continuar treinando" : "Crie sua conta e comece hoje"}
           </p>

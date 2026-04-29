@@ -6,6 +6,7 @@ import StreakBadge from "@/components/StreakBadge";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import logo from "@/assets/multifit-logo.png";
 
 const quotes = [
   "O corpo alcança o que a mente acredita. 💪",
@@ -30,12 +31,15 @@ export default function HomePage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between mb-6"
       >
-        <div>
-          <p className="text-sm text-muted-foreground">Olá,</p>
-          <h1 className="text-2xl font-bold font-display">
-            {isProfileComplete ? profile!.name.split(" ")[0] : "Atleta"}{" "}
-            <span className="text-gradient">MultiFit</span>
-          </h1>
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="MultiFit" className="w-12 h-12 object-contain" />
+          <div>
+            <p className="text-xs text-muted-foreground">Olá,</p>
+            <h1 className="text-xl font-bold font-display">
+              {isProfileComplete ? profile!.name.split(" ")[0] : "Atleta"}{" "}
+              <span className="text-gradient">MultiFit</span>
+            </h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <StreakBadge days={7} />
