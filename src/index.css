@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 
 @tailwind base;
 @tailwind components;
@@ -99,6 +100,26 @@
   .glass {
     @apply bg-card/60 backdrop-blur-xl border border-border/50;
   }
+}
+
+/* Leaflet dark theme tweaks */
+.leaflet-container {
+  background: hsl(240 15% 8%);
+  font-family: var(--font-body);
+}
+.leaflet-tile {
+  filter: brightness(0.7) invert(1) contrast(0.9) hue-rotate(180deg) saturate(0.4) brightness(0.9);
+}
+.leaflet-control-attribution {
+  background: hsl(240 12% 8% / 0.7) !important;
+  color: hsl(0 0% 60%) !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a { color: hsl(96 85% 55%) !important; }
+.leaflet-control-zoom a {
+  background: hsl(240 12% 10%) !important;
+  color: hsl(0 0% 95%) !important;
+  border-color: hsl(0 0% 16%) !important;
 }
 
 /* Scrollbar */
