@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Dumbbell, Flame, Footprints, Timer, TrendingUp, Zap, Moon, Bot, Apple, LogOut } from "lucide-react";
+import { Dumbbell, Flame, Footprints, Timer, TrendingUp, Zap, Moon, Bot, Apple, User, Apple as AppleIcon } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import StreakBadge from "@/components/StreakBadge";
@@ -44,11 +44,17 @@ export default function HomePage() {
         <div className="flex items-center gap-2">
           <StreakBadge days={7} />
           <button
-            onClick={() => signOut()}
-            className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-            title="Sair"
+            onClick={() => navigate("/profile")}
+            className="w-10 h-10 rounded-full bg-gradient-primary p-[2px] shadow-neon"
+            title="Meu perfil"
           >
-            <LogOut size={18} />
+            <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <User size={16} className="text-primary" />
+              )}
+            </div>
           </button>
         </div>
       </motion.div>
