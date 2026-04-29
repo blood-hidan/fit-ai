@@ -373,15 +373,37 @@ export default function CommunityPage() {
                     {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ptBR })}
                   </p>
                 </div>
-                {post.user_id === user?.id && (
+                <div className="relative">
                   <button
-                    onClick={() => deletePost(post.id)}
-                    className="text-muted-foreground hover:text-destructive p-1"
-                    aria-label="Excluir"
+                    onClick={() => setMenuOpen(menuOpen === post.id ? null : post.id)}
+                    className="text-muted-foreground hover:text-foreground p-1"
+                    aria-label="Mais opções"
                   >
-                    <Trash2 size={14} />
+                    <MoreHorizontal size={16} />
                   </button>
-                )}
+                  {menuOpen === post.id && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(null)} />
+                      <div className="absolute right-0 top-full mt-1 z-40 glass rounded-xl py-1 min-w-[140px] shadow-xl">
+                        {post.user_id === user?.id ? (
+                          <button
+                            onClick={() => { setMenuOpen(null); deletePost(post.id); }}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-destructive hover:bg-secondary/60"
+                          >
+                            <Trash2 size={12} /> Excluir
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => { setMenuOpen(null); setReportPostId(post.id); }}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-secondary/60"
+                          >
+                            <Flag size={12} /> Denunciar
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </header>
 
               {display.media_url && display.media_type === "image" && (
