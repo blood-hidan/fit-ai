@@ -18,7 +18,6 @@ const quotes = [
 
 export default function HomePage() {
   const { profile, loading } = useProfile();
-  const { signOut } = useAuth();
   const navigate = useNavigate();
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
 
