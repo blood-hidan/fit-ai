@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Send, Plus, ImagePlus, Repeat2, Share2, X, Loader2, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Send, Plus, ImagePlus, Repeat2, Share2, X, Loader2, Trash2, Flag, MoreHorizontal } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +57,11 @@ export default function CommunityPage() {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("Spam");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -293,6 +298,27 @@ export default function CommunityPage() {
     toast.success("Post excluído");
   }
 
+  async function submitReport() {
+    if (!user || !reportPostId) return;
+    setReporting(true);
+    const { error } = await supabase.from("post_reports").insert({
+      post_id: reportPostId,
+      user_id: user.id,
+      reason: reportReason,
+      details: reportDetails.trim() || null,
+    });
+    setReporting(false);
+    if (error) {
+      if (error.code === "23505") toast.error("Você já denunciou este post");
+      else toast.error("Erro ao denunciar");
+      return;
+    }
+    toast.success("Denúncia enviada. Obrigado!");
+    setReportPostId(null);
+    setReportReason("Spam");
+    setReportDetails("");
+  }
+
   return (
     <div className="min-h-screen pb-24 px-4 pt-6 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -347,15 +373,37 @@ export default function CommunityPage() {
                     {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ptBR })}
                   </p>
                 </div>
-                {post.user_id === user?.id && (
+                <div className="relative">
                   <button
-                    onClick={() => deletePost(post.id)}
-                    className="text-muted-foreground hover:text-destructive p-1"
-                    aria-label="Excluir"
+                    onClick={() => setMenuOpen(menuOpen === post.id ? null : post.id)}
+                    className="text-muted-foreground hover:text-foreground p-1"
+                    aria-label="Mais opções"
                   >
-                    <Trash2 size={14} />
+                    <MoreHorizontal size={16} />
                   </button>
-                )}
+                  {menuOpen === post.id && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(null)} />
+                      <div className="absolute right-0 top-full mt-1 z-40 glass rounded-xl py-1 min-w-[140px] shadow-xl">
+                        {post.user_id === user?.id ? (
+                          <button
+                            onClick={() => { setMenuOpen(null); deletePost(post.id); }}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-destructive hover:bg-secondary/60"
+                          >
+                            <Trash2 size={12} /> Excluir
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => { setMenuOpen(null); setReportPostId(post.id); }}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-secondary/60"
+                          >
+                            <Flag size={12} /> Denunciar
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </header>
 
               {display.media_url && display.media_type === "image" && (
@@ -549,6 +597,63 @@ export default function CommunityPage() {
                   className="bg-gradient-primary text-primary-foreground rounded-full px-4 py-2 text-sm font-bold disabled:opacity-40"
                 >
                   <Send size={14} />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Report modal */}
+      <AnimatePresence>
+        {reportPostId && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setReportPostId(null)}
+          >
+            <motion.div
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md glass rounded-2xl p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Flag size={18} className="text-destructive" />
+                <h2 className="font-bold">Denunciar post</h2>
+              </div>
+              <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Motivo</label>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                className="w-full bg-secondary rounded-xl px-3 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option>Spam</option>
+                <option>Conteúdo inadequado</option>
+                <option>Discurso de ódio</option>
+                <option>Assédio ou bullying</option>
+                <option>Informação falsa</option>
+                <option>Violência</option>
+                <option>Outro</option>
+              </select>
+              <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Detalhes (opcional)</label>
+              <textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value.slice(0, 500))}
+                rows={3}
+                placeholder="Conte mais sobre o problema..."
+                className="w-full bg-secondary rounded-xl px-3 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4"
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setReportPostId(null)} className="flex-1 bg-secondary py-3 rounded-xl text-sm font-medium">
+                  Cancelar
+                </button>
+                <button
+                  onClick={submitReport}
+                  disabled={reporting}
+                  className="flex-1 bg-destructive text-destructive-foreground py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {reporting ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />}
+                  Enviar
                 </button>
               </div>
             </motion.div>
