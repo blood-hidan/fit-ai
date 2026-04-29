@@ -4,7 +4,6 @@ import BottomNav from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import StreakBadge from "@/components/StreakBadge";
 import { useProfile } from "@/hooks/useProfile";
-import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import logo from "@/assets/multifit-logo.png";
 
