@@ -604,6 +604,63 @@ export default function CommunityPage() {
         )}
       </AnimatePresence>
 
+      {/* Report modal */}
+      <AnimatePresence>
+        {reportPostId && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setReportPostId(null)}
+          >
+            <motion.div
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md glass rounded-2xl p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Flag size={18} className="text-destructive" />
+                <h2 className="font-bold">Denunciar post</h2>
+              </div>
+              <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Motivo</label>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                className="w-full bg-secondary rounded-xl px-3 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option>Spam</option>
+                <option>Conteúdo inadequado</option>
+                <option>Discurso de ódio</option>
+                <option>Assédio ou bullying</option>
+                <option>Informação falsa</option>
+                <option>Violência</option>
+                <option>Outro</option>
+              </select>
+              <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Detalhes (opcional)</label>
+              <textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value.slice(0, 500))}
+                rows={3}
+                placeholder="Conte mais sobre o problema..."
+                className="w-full bg-secondary rounded-xl px-3 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4"
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setReportPostId(null)} className="flex-1 bg-secondary py-3 rounded-xl text-sm font-medium">
+                  Cancelar
+                </button>
+                <button
+                  onClick={submitReport}
+                  disabled={reporting}
+                  className="flex-1 bg-destructive text-destructive-foreground py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {reporting ? <Loader2 size={14} className="animate-spin" /> : <Flag size={14} />}
+                  Enviar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <BottomNav />
     </div>
   );
