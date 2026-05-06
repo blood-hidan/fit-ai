@@ -1,12 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>MultiFit — Treine, Evolua, Supere</title>
     <meta name="description" content="MultiFit: rotinas fitness inteligentes, nutrição, comunidade e coach por IA.">
     <meta name="author" content="MultiFit" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#84cc16" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MultiFit" />
+    <meta name="application-name" content="MultiFit" />
+    <meta name="msapplication-TileColor" content="#0a0b0d" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- PWA Links -->
+    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/multifit-logo.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.jpg" />
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.jpg" />
 
     
     
@@ -25,5 +41,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('[MultiFit] SW registered:', reg.scope))
+            .catch(err => console.log('[MultiFit] SW registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>
