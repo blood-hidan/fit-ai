@@ -7,9 +7,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 interface ProfileLite {
   user_id: string;
+  username?: string;
   name: string;
   avatar_url: string | null;
 }
@@ -46,6 +48,7 @@ const MAX_FILE_MB = 25;
 
 export default function CommunityPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -88,7 +91,7 @@ export default function CommunityPage() {
     );
 
     const [{ data: profilesData }, { data: originalsData }, likedSet] = await Promise.all([
-      supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]),
+      supabase.from("profiles").select("user_id, name, avatar_url, username").in("user_id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]),
       originalIds.length
         ? supabase.from("posts").select("*").in("id", originalIds)
         : Promise.resolve({ data: [] as PostRow[] }),
@@ -103,7 +106,7 @@ export default function CommunityPage() {
     const originalAuthorIds = Array.from(new Set((originalsData ?? []).map((o: any) => o.user_id)));
     const missing = originalAuthorIds.filter((id) => !profileMap.has(id));
     if (missing.length) {
-      const { data: extra } = await supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", missing);
+      const { data: extra } = await supabase.from("profiles").select("user_id, name, avatar_url, username").in("user_id", missing);
       (extra ?? []).forEach((p) => profileMap.set(p.user_id, p as ProfileLite));
     }
 
@@ -255,7 +258,7 @@ export default function CommunityPage() {
       .order("created_at", { ascending: true });
     const ids = Array.from(new Set((data ?? []).map((c) => c.user_id)));
     const { data: profs } = ids.length
-      ? await supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", ids)
+      ? await supabase.from("profiles").select("user_id, name, avatar_url, username").in("user_id", ids)
       : { data: [] as ProfileLite[] };
     const map = new Map((profs ?? []).map((p) => [p.user_id, p as ProfileLite]));
     setComments(((data ?? []) as CommentRow[]).map((c) => ({ ...c, author: map.get(c.user_id) })));
@@ -366,13 +369,22 @@ export default function CommunityPage() {
                 </div>
               )}
               <header className="flex items-center gap-3 p-4 pb-3">
-                <Avatar profile={display.author} />
-                <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => display.author?.username && navigate(`/u/${display.author.username}`)}
+                  className="shrink-0"
+                >
+                  <Avatar profile={display.author} />
+                </button>
+                <button
+                  onClick={() => display.author?.username && navigate(`/u/${display.author.username}`)}
+                  className="flex-1 min-w-0 text-left"
+                >
                   <p className="text-sm font-bold truncate">{display.author?.name || "Usuário"}</p>
                   <p className="text-[10px] text-muted-foreground">
+                    {display.author?.username ? `@${display.author.username} • ` : ""}
                     {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ptBR })}
                   </p>
-                </div>
+                </button>
                 <div className="relative">
                   <button
                     onClick={() => setMenuOpen(menuOpen === post.id ? null : post.id)}
