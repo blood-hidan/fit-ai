@@ -48,6 +48,7 @@ const MAX_FILE_MB = 25;
 
 export default function CommunityPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -368,13 +369,22 @@ export default function CommunityPage() {
                 </div>
               )}
               <header className="flex items-center gap-3 p-4 pb-3">
-                <Avatar profile={display.author} />
-                <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => display.author?.username && navigate(`/u/${display.author.username}`)}
+                  className="shrink-0"
+                >
+                  <Avatar profile={display.author} />
+                </button>
+                <button
+                  onClick={() => display.author?.username && navigate(`/u/${display.author.username}`)}
+                  className="flex-1 min-w-0 text-left"
+                >
                   <p className="text-sm font-bold truncate">{display.author?.name || "Usuário"}</p>
                   <p className="text-[10px] text-muted-foreground">
+                    {display.author?.username ? `@${display.author.username} • ` : ""}
                     {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ptBR })}
                   </p>
-                </div>
+                </button>
                 <div className="relative">
                   <button
                     onClick={() => setMenuOpen(menuOpen === post.id ? null : post.id)}
