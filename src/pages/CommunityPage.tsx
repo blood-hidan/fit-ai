@@ -10,6 +10,7 @@ import { ptBR } from "date-fns/locale";
 
 interface ProfileLite {
   user_id: string;
+  username?: string;
   name: string;
   avatar_url: string | null;
 }
