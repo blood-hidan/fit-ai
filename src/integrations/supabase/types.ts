@@ -38,6 +38,119 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          user1_id: string
+          user2_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          user1_id: string
+          user2_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          user1_id?: string
+          user2_id?: string
+        }
+        Relationships: []
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          id: string
+          read: boolean
+          type: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          read?: boolean
+          type: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          read?: boolean
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_comments: {
         Row: {
           content: string
@@ -188,6 +301,7 @@ export type Database = {
           goal: string | null
           height: number | null
           id: string
+          is_private: boolean
           level: string | null
           name: string
           sleep_hours: number | null
@@ -195,6 +309,7 @@ export type Database = {
           training_time: string | null
           updated_at: string
           user_id: string
+          username: string
           weekly_frequency: number | null
           weight: number | null
         }
@@ -209,6 +324,7 @@ export type Database = {
           goal?: string | null
           height?: number | null
           id?: string
+          is_private?: boolean
           level?: string | null
           name?: string
           sleep_hours?: number | null
@@ -216,6 +332,7 @@ export type Database = {
           training_time?: string | null
           updated_at?: string
           user_id: string
+          username: string
           weekly_frequency?: number | null
           weight?: number | null
         }
@@ -230,6 +347,7 @@ export type Database = {
           goal?: string | null
           height?: number | null
           id?: string
+          is_private?: boolean
           level?: string | null
           name?: string
           sleep_hours?: number | null
@@ -237,6 +355,7 @@ export type Database = {
           training_time?: string | null
           updated_at?: string
           user_id?: string
+          username?: string
           weekly_frequency?: number | null
           weight?: number | null
         }
@@ -283,7 +402,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      are_mutual_followers: {
+        Args: { _a: string; _b: string }
+        Returns: boolean
+      }
+      get_or_create_conversation: {
+        Args: { _other_user: string }
+        Returns: string
+      }
+      is_conversation_participant: {
+        Args: { _conv: string; _user: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
