@@ -133,3 +133,51 @@
   background: hsl(240 10% 25%);
   border-radius: 3px;
 }
+
+/* PWA Safe Area Support */
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Touch feedback for buttons */
+button:active {
+  transform: scale(0.98);
+}
+
+/* Disable text selection on interactive elements for mobile */
+button, a, .no-select {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Keep screen awake indicator */
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 8px hsl(96 85% 55% / 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 16px hsl(96 85% 55% / 0.7);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Fix iOS input zoom */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Smooth scrolling for iOS */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
