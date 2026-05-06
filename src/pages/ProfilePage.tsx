@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { User, Save, Loader2, Camera, LogOut, Apple, Settings } from "lucide-react";
+import { User, Save, Loader2, Camera, LogOut, Apple, Settings, Lock, Globe, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import { useProfile } from "@/hooks/useProfile";
@@ -156,7 +156,14 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     setSaving(true);
+    const username = (local.username || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    if (username.length < 3) {
+      toast({ title: "Username muito curto", description: "Mínimo 3 caracteres (a-z, 0-9, _)", variant: "destructive" });
+      setSaving(false); return;
+    }
     await updateProfile({
+      username,
+      is_private: local.is_private,
       name: local.name,
       bio: local.bio,
       age: local.age,
@@ -217,6 +224,26 @@ export default function ProfilePage() {
         {/* Basic info */}
         <section className="space-y-3">
           <SectionTitle icon={Settings}>Informações</SectionTitle>
+          <button
+            onClick={() => local.username && navigate(`/u/${local.username}`)}
+            className="w-full glass rounded-xl px-4 py-3 flex items-center justify-between text-left hover:bg-secondary/40 transition"
+          >
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Ver perfil público</p>
+              <p className="font-bold text-sm">@{local.username}</p>
+            </div>
+            <ExternalLink size={14} className="text-primary" />
+          </button>
+          <div>
+            <Label>Nome de usuário (@)</Label>
+            <input
+              type="text"
+              value={local.username || ""}
+              onChange={(e) => set({ username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 30) })}
+              placeholder="seu_username"
+              className="w-full bg-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
           <div>
             <Label>Nome</Label>
             <input
@@ -237,6 +264,21 @@ export default function ProfilePage() {
               className="w-full bg-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
             />
           </div>
+          <button
+            onClick={() => set({ is_private: !local.is_private })}
+            className="w-full glass rounded-xl px-4 py-3 flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              {local.is_private ? <Lock size={16} className="text-primary" /> : <Globe size={16} className="text-primary" />}
+              <div>
+                <p className="font-bold text-sm">{local.is_private ? "Conta privada" : "Conta pública"}</p>
+                <p className="text-[11px] text-muted-foreground">{local.is_private ? "Aprovação manual de seguidores" : "Qualquer um pode te seguir"}</p>
+              </div>
+            </div>
+            <div className={`w-10 h-6 rounded-full p-0.5 transition ${local.is_private ? "bg-primary" : "bg-secondary"}`}>
+              <div className={`w-5 h-5 rounded-full bg-background transition ${local.is_private ? "translate-x-4" : ""}`} />
+            </div>
+          </button>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label>Idade</Label>
