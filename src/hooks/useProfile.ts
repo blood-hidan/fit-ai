@@ -5,6 +5,8 @@ import { useAuth } from "./useAuth";
 export interface DBProfile {
   id: string;
   user_id: string;
+  username: string;
+  is_private: boolean;
   name: string;
   bio: string | null;
   avatar_url: string | null;
