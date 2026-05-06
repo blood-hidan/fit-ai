@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Dumbbell, Flame, Footprints, Timer, TrendingUp, Zap, Moon, Bot, Apple, User, Apple as AppleIcon } from "lucide-react";
+import { Dumbbell, Flame, Footprints, Timer, TrendingUp, Zap, Moon, Bot, Apple, User, Bell } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import StreakBadge from "@/components/StreakBadge";
 import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import logo from "@/assets/multifit-logo.png";
 
@@ -17,8 +20,21 @@ const quotes = [
 
 export default function HomePage() {
   const { profile, loading } = useProfile();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false);
+      setUnread(count ?? 0);
+    };
+    load();
+    const ch = supabase.channel("home-notifs").on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.id]);
 
   const isProfileComplete = !!profile?.name;
 
@@ -40,6 +56,16 @@ export default function HomePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/notifications")}
+            className="relative w-10 h-10 rounded-full bg-secondary flex items-center justify-center"
+            title="Notificações"
+          >
+            <Bell size={16} />
+            {unread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{unread > 9 ? "9+" : unread}</span>
+            )}
+          </button>
           <StreakBadge days={7} />
           <button
             onClick={() => navigate("/profile")}
