@@ -88,7 +88,7 @@ export default function CommunityPage() {
     );
 
     const [{ data: profilesData }, { data: originalsData }, likedSet] = await Promise.all([
-      supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]),
+      supabase.from("profiles").select("user_id, name, avatar_url, username").in("user_id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]),
       originalIds.length
         ? supabase.from("posts").select("*").in("id", originalIds)
         : Promise.resolve({ data: [] as PostRow[] }),
@@ -103,7 +103,7 @@ export default function CommunityPage() {
     const originalAuthorIds = Array.from(new Set((originalsData ?? []).map((o: any) => o.user_id)));
     const missing = originalAuthorIds.filter((id) => !profileMap.has(id));
     if (missing.length) {
-      const { data: extra } = await supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", missing);
+      const { data: extra } = await supabase.from("profiles").select("user_id, name, avatar_url, username").in("user_id", missing);
       (extra ?? []).forEach((p) => profileMap.set(p.user_id, p as ProfileLite));
     }
 
@@ -255,7 +255,7 @@ export default function CommunityPage() {
       .order("created_at", { ascending: true });
     const ids = Array.from(new Set((data ?? []).map((c) => c.user_id)));
     const { data: profs } = ids.length
-      ? await supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", ids)
+      ? await supabase.from("profiles").select("user_id, name, avatar_url, username").in("user_id", ids)
       : { data: [] as ProfileLite[] };
     const map = new Map((profs ?? []).map((p) => [p.user_id, p as ProfileLite]));
     setComments(((data ?? []) as CommentRow[]).map((c) => ({ ...c, author: map.get(c.user_id) })));
