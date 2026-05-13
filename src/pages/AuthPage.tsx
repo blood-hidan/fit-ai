@@ -33,6 +33,7 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setKeepLoggedIn(keepLogged);
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -76,6 +77,7 @@ export default function AuthPage() {
   };
 
   const handleGoogle = async () => {
+    setKeepLoggedIn(keepLogged);
     setBusy(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
