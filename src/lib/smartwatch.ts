@@ -9,8 +9,19 @@ export type HRListener = (bpm: number) => void;
 
 const BLE_KEY = "mf_ble_device_name";
 
+type BTDevice = {
+  name?: string;
+  gatt?: { connect: () => Promise<{ getPrimaryService: (s: number) => Promise<{ getCharacteristic: (c: number) => Promise<BTChar> }> }>; disconnect: () => void };
+};
+type BTChar = {
+  startNotifications: () => Promise<void>;
+  stopNotifications: () => Promise<void>;
+  addEventListener: (e: string, h: (ev: Event) => void) => void;
+  removeEventListener: (e: string, h: (ev: Event) => void) => void;
+};
+
 export async function connectHeartRate(onBpm: HRListener): Promise<{ disconnect: () => void; deviceName: string }> {
-  const nav = navigator as unknown as { bluetooth?: { requestDevice: (opts: unknown) => Promise<BluetoothDevice> } };
+  const nav = navigator as unknown as { bluetooth?: { requestDevice: (opts: unknown) => Promise<BTDevice> } };
   if (!nav.bluetooth) throw new Error("Web Bluetooth não disponível neste dispositivo. Use Chrome/Android ou um build nativo.");
 
   const device = await nav.bluetooth.requestDevice({
