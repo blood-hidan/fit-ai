@@ -157,6 +157,16 @@ export default function AuthPage() {
               </div>
             </div>
 
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={keepLogged}
+                onChange={(e) => setKeepLogged(e.target.checked)}
+                className="w-4 h-4 rounded accent-primary"
+              />
+              Manter conectado neste dispositivo
+            </label>
+
             <motion.button
               whileTap={{ scale: 0.97 }}
               type="submit"
