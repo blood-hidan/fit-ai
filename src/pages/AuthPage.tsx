@@ -22,6 +22,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [keepLogged, setKeepLogged] = useState(getKeepLoggedIn());
   const [busy, setBusy] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
