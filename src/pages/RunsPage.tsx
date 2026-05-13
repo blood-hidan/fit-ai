@@ -130,7 +130,7 @@ export default function RunsPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50);
-    if (!error && data) setRuns(data as RunRow[]);
+    if (!error && data) setRuns(data as unknown as RunRow[]);
     setLoading(false);
   }
 
@@ -279,9 +279,7 @@ export default function RunsPage() {
         duration_s: elapsed,
         avg_pace_s_per_km: pace,
         calories,
-        path,
-        elevation_gain: Math.round(elevationGain),
-        max_speed: Math.round(maxSpeedRef.current * 10) / 10,
+        path: path as any,
       })
       .select()
       .single();
@@ -293,8 +291,8 @@ export default function RunsPage() {
     }
 
     toast({ title: "Corrida salva com sucesso!" });
-    setRuns((r) => [data as RunRow, ...r]);
-    setSelected(data as RunRow);
+    setRuns((r) => [data as unknown as RunRow, ...r]);
+    setSelected(data as unknown as RunRow);
     setView("detail");
   };
 

@@ -8,6 +8,7 @@ import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/multifit-logo.png";
+import { getKeepLoggedIn, setKeepLoggedIn } from "@/lib/auth-persistence";
 
 const signUpSchema = z.object({
   name: z.string().trim().min(2, "Mínimo 2 caracteres").max(60),
@@ -21,6 +22,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [keepLogged, setKeepLogged] = useState(getKeepLoggedIn());
   const [busy, setBusy] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -31,6 +33,7 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setKeepLoggedIn(keepLogged);
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -74,6 +77,7 @@ export default function AuthPage() {
   };
 
   const handleGoogle = async () => {
+    setKeepLoggedIn(keepLogged);
     setBusy(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
@@ -152,6 +156,16 @@ export default function AuthPage() {
                 />
               </div>
             </div>
+
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={keepLogged}
+                onChange={(e) => setKeepLogged(e.target.checked)}
+                className="w-4 h-4 rounded accent-primary"
+              />
+              Manter conectado neste dispositivo
+            </label>
 
             <motion.button
               whileTap={{ scale: 0.97 }}
