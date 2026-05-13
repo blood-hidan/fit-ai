@@ -8,6 +8,7 @@ import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/multifit-logo.png";
+import { getKeepLoggedIn, setKeepLoggedIn } from "@/lib/auth-persistence";
 
 const signUpSchema = z.object({
   name: z.string().trim().min(2, "Mínimo 2 caracteres").max(60),
