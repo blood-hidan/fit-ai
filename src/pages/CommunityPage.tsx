@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Send, Plus, ImagePlus, Repeat2, Share2, X, Loader2, Trash2, Flag, MoreHorizontal } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import StoriesBar from "@/components/StoriesBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -336,6 +337,8 @@ export default function CommunityPage() {
           <Plus size={18} />
         </button>
       </div>
+
+      <StoriesBar />
 
       {loading && (
         <div className="flex justify-center py-10">

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { User, Save, Loader2, Camera, LogOut, Apple, Settings, Lock, Globe, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
+import SmartwatchPanel from "@/components/SmartwatchPanel";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -382,6 +383,8 @@ export default function ProfilePage() {
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
           {saving ? "Salvando..." : "Salvar Perfil"}
         </motion.button>
+
+        <SmartwatchPanel />
 
         <button
           onClick={() => navigate("/nutrition")}
