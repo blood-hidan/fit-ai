@@ -1,3 +1,4 @@
-# Welcome to your Lovable project
+# Bem-Vindo(a) ao Projeto da MultiFit
 
-TODO: Document your project here
+Projeto desenvolvido pela Escola Cesam em 2026
+Em constante atualização 🚀
