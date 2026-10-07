@@ -1,135 +1,72 @@
-// Generate personalized nutrition plan via Lovable AI
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.2";
 import { consumeAiRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders, "Content-Type": "application/json" },
+});
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    if (Number(req.headers.get("content-length") ?? 0) > 16_000) {
-      return new Response(JSON.stringify({ error: "Requisição muito grande" }), {
-        status: 413,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const body = await req.text();
-    if (new TextEncoder().encode(body).byteLength > 16_000) {
-      return new Response(JSON.stringify({ error: "Requisição muito grande" }), {
-        status: 413,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const { profile, calories, macros } = JSON.parse(body);
-    if (
-      !profile || typeof profile !== "object" ||
-      !Number.isFinite(calories) || calories < 500 || calories > 10_000 ||
-      !macros || ![macros.protein, macros.carbs, macros.fat].every(Number.isFinite)
-    ) {
-      return new Response(JSON.stringify({ error: "Perfil ou metas inválidas" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const rateLimit = await consumeAiRateLimit("generate-nutrition", req.headers.get("authorization"));
-    if (rateLimit.unavailable) {
-      return new Response(JSON.stringify({ error: "Serviço temporariamente indisponível" }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (!rateLimit.allowed) {
-      return new Response(JSON.stringify({ error: "Limite de uso atingido. Tente novamente mais tarde." }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const authorization = req.headers.get("authorization");
+    const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const openAiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!token || !supabaseUrl || !anonKey || !serviceKey) return json({ error: "Autenticação necessária" }, 401);
+    if (!openAiKey) return json({ error: "A integração com IA ainda não foi configurada." }, 503);
 
-    const prompt = `Crie um plano alimentar diário personalizado em português brasileiro.
-
-Perfil:
-- Nome: ${profile.name || "Atleta"}
-- ${profile.age} anos, ${profile.weight}kg, ${profile.height}cm
-- Objetivo: ${profile.goal}
-- Biotipo: ${profile.body_type}
-- Treina ${profile.weekly_frequency}x/semana no período da ${profile.training_time}
-- Alergias: ${profile.allergies || "nenhuma"}
-- Restrições alimentares: ${profile.dietary_restrictions || "nenhuma"}
-
-Meta calórica: ${calories} kcal/dia
-Meta de macros: ${macros.protein}g proteína, ${macros.carbs}g carboidratos, ${macros.fat}g gordura
-
-Retorne 5 refeições (café da manhã, lanche manhã, almoço, lanche tarde, jantar) com:
-- Nome da refeição e horário sugerido
-- Lista de alimentos com quantidades em gramas/medidas caseiras
-- Calorias e macros aproximados por refeição
-- 1 dica nutricional ao final`;
-
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Você é um nutricionista esportivo. Responda sempre em português brasileiro, em formato markdown organizado, claro e prático.",
-            },
-            { role: "user", content: prompt },
-          ],
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite de uso atingido. Tente novamente." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos esgotados." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      await response.text();
-      console.error("AI gateway error", response.status);
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 8_000) return json({ error: "Requisição muito grande" }, 413);
+    const { calories, macros } = JSON.parse(rawBody);
+    if (!Number.isInteger(calories) || calories < 500 || calories > 10_000 ||
+      !macros || ![macros.protein, macros.carbs, macros.fat].every((value: unknown) => Number.isFinite(value) && Number(value) >= 0 && Number(value) <= 1_000)) {
+      return json({ error: "Metas nutricionais inválidas" }, 400);
     }
 
-    const data = await response.json();
-    const plan = data.choices?.[0]?.message?.content || "";
+    const authClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !user) return json({ error: "Sessão inválida" }, 401);
+    const rateLimit = await consumeAiRateLimit("generate-nutrition", authorization);
+    if (rateLimit.unavailable) return json({ error: "Serviço temporariamente indisponível" }, 503);
+    if (!rateLimit.allowed) return json({ error: "Limite de uso atingido. Tente novamente mais tarde." }, 429);
 
-    return new Response(JSON.stringify({ plan }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const [{ data: profile }, { data: privateProfile }] = await Promise.all([
+      admin.from("profiles").select("name,level,goal").eq("user_id", user.id).maybeSingle(),
+      admin.from("profile_private").select("age,weight,height,weekly_frequency,training_time,allergies,dietary_restrictions").eq("user_id", user.id).maybeSingle(),
+    ]);
+
+    const prompt = `Crie uma sugestão educativa de plano alimentar diário em português brasileiro.\n\nPerfil cadastrado: nome ${profile?.name || "Atleta"}; idade ${privateProfile?.age ?? "não informada"}; peso ${privateProfile?.weight ?? "não informado"} kg; altura ${privateProfile?.height ?? "não informada"} cm; objetivo ${profile?.goal ?? "não informado"}; treino ${privateProfile?.weekly_frequency ?? "não informado"} vezes por semana, no período ${privateProfile?.training_time ?? "não informado"}. Alergias: ${privateProfile?.allergies || "nenhuma informada"}. Restrições: ${privateProfile?.dietary_restrictions || "nenhuma informada"}.\n\nMetas informadas no aplicativo: ${calories} kcal; proteína ${macros.protein} g, carboidratos ${macros.carbs} g e gordura ${macros.fat} g.\n\nSugira cinco refeições com horários, alimentos e porções aproximadas, estimativa de macros por refeição e uma dica. Respeite rigorosamente alergias e restrições. Inclua uma frase breve de que o plano deve ser validado por nutricionista.`;
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: Deno.env.get("OPENAI_MODEL") || "gpt-4.1-mini",
+        instructions: "Você é um assistente de nutrição esportiva. Não diagnostique doenças nem prescreva dietas clínicas. Responda com markdown organizado e em português brasileiro.",
+        input: prompt,
+        max_output_tokens: 2_000,
+        store: false,
+      }),
     });
-  } catch (e) {
-    console.error("generate-nutrition error", e instanceof Error ? e.name : "UnknownError");
-    return new Response(
-      JSON.stringify({ error: "Erro interno ao gerar o plano" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!response.ok) {
+      console.error("OpenAI nutrition request failed", response.status);
+      return json({ error: "O serviço de IA está indisponível no momento." }, response.status === 429 ? 429 : 502);
+    }
+    const result = await response.json();
+    if (typeof result.output_text !== "string") return json({ error: "A IA não retornou um plano válido." }, 502);
+    return json({ plan: result.output_text });
+  } catch (error) {
+    console.error("generate-nutrition error", error instanceof Error ? error.name : "UnknownError");
+    return json({ error: "Erro interno ao gerar o plano" }, 500);
   }
 });

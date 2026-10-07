@@ -17,6 +17,7 @@ export type Database = {
       chat_messages: {
         Row: {
           content: string
+          conversation_id: string
           created_at: string
           id: string
           role: string
@@ -24,6 +25,7 @@ export type Database = {
         }
         Insert: {
           content: string
+          conversation_id: string
           created_at?: string
           id?: string
           role: string
@@ -329,6 +331,12 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      coach_conversations: {
+        Row: { id: string; user_id: string; title: string; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; title?: string; created_at?: string; updated_at?: string }
+        Update: { title?: string; updated_at?: string }
+        Relationships: []
       }
       profiles: {
         Row: {

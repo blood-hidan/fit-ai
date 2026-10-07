@@ -1,11 +1,7 @@
 {
-  "appId": "app.lovable.333d3eeb6dc84e08a509831f5caac359",
+  "appId": "br.com.multifit.app",
   "appName": "MultiFit",
   "webDir": "dist",
-  "server": {
-    "url": "https://333d3eeb-6dc8-4e08-a509-831f5caac359.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
-  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 1500,

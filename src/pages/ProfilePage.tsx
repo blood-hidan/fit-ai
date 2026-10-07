@@ -135,10 +135,19 @@ export default function ProfilePage() {
     }
     setUploadingAvatar(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, {
-        contentType: file.type,
+      const bitmap = await createImageBitmap(file);
+      const side = Math.min(bitmap.width, bitmap.height);
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 320;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Não foi possível processar esta imagem.");
+      context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 320, 320);
+      bitmap.close();
+      const avatar = await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Falha ao gerar a foto.")), "image/jpeg", 0.88));
+      const path = `${user.id}/avatar.jpg`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, avatar, {
+        contentType: "image/jpeg",
         upsert: true,
       });
       if (upErr) throw upErr;

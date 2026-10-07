@@ -691,7 +691,7 @@ export default function CommunityPage() {
         )}
       </AnimatePresence>
 
-      <BottomNav />
+      {!composerOpen && <BottomNav />}
     </div>
   );
 }

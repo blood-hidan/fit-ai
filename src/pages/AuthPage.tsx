@@ -1,19 +1,18 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import logo from "@/assets/multifit-logo.png";
 import { getKeepLoggedIn, setKeepLoggedIn } from "@/lib/auth-persistence";
 
 const signUpSchema = z.object({
-  name: z.string().trim().min(2, "Mínimo 2 caracteres").max(60),
-  email: z.string().trim().email("Email inválido").max(255),
-  password: z.string().min(6, "Mínimo 6 caracteres").max(72),
+  name: z.string().trim().min(2, "MÃ­nimo 2 caracteres").max(60),
+  email: z.string().trim().email("Email invÃ¡lido").max(255),
+  password: z.string().min(6, "MÃ­nimo 6 caracteres").max(72),
 });
 const signInSchema = signUpSchema.omit({ name: true });
 
@@ -39,7 +38,7 @@ export default function AuthPage() {
       if (mode === "signup") {
         const parsed = signUpSchema.safeParse({ name, email, password });
         if (!parsed.success) {
-          toast({ title: "Dados inválidos", description: parsed.error.issues[0].message, variant: "destructive" });
+          toast({ title: "Dados invÃ¡lidos", description: parsed.error.issues[0].message, variant: "destructive" });
           return;
         }
         const { error } = await supabase.auth.signUp({
@@ -51,11 +50,11 @@ export default function AuthPage() {
           },
         });
         if (error) throw error;
-        toast({ title: "Conta criada! 🎉", description: "Bem-vindo ao MultiFit." });
+        toast({ title: "Conta criada! ðŸŽ‰", description: "Bem-vindo ao MultiFit." });
       } else {
         const parsed = signInSchema.safeParse({ email, password });
         if (!parsed.success) {
-          toast({ title: "Dados inválidos", description: parsed.error.issues[0].message, variant: "destructive" });
+          toast({ title: "Dados invÃ¡lidos", description: parsed.error.issues[0].message, variant: "destructive" });
           return;
         }
         const { error } = await supabase.auth.signInWithPassword({
@@ -63,13 +62,13 @@ export default function AuthPage() {
           password: parsed.data.password,
         });
         if (error) throw error;
-        toast({ title: "Bem-vindo de volta! 💪" });
+        toast({ title: "Bem-vindo de volta! ðŸ’ª" });
       }
     } catch (err: any) {
       const msg = String(err?.message || "");
       let friendly = msg;
       if (msg.includes("Invalid login")) friendly = "Email ou senha incorretos.";
-      else if (msg.includes("already registered")) friendly = "Email já cadastrado. Faça login.";
+      else if (msg.includes("already registered")) friendly = "Email jÃ¡ cadastrado. FaÃ§a login.";
       toast({ title: "Erro", description: friendly, variant: "destructive" });
     } finally {
       setBusy(false);
@@ -80,17 +79,17 @@ export default function AuthPage() {
     setKeepLoggedIn(keepLogged);
     setBusy(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/` },
       });
-      if (result.error) {
-        toast({ title: "Erro", description: "Não foi possível entrar com Google.", variant: "destructive" });
-      }
+      if (error) throw error;
+    } catch (err: any) {
+      toast({ title: "Erro", description: err?.message || "Configure Google no Supabase para habilitar este acesso.", variant: "destructive" });
     } finally {
       setBusy(false);
     }
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <motion.div
@@ -149,7 +148,7 @@ export default function AuthPage() {
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="MÃ­nimo 6 caracteres"
                   className="w-full bg-secondary rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   required
                   minLength={6}
@@ -203,8 +202,8 @@ export default function AuthPage() {
             className="w-full text-sm text-muted-foreground hover:text-primary mt-5 text-center transition-colors"
           >
             {mode === "login"
-              ? "Não tem conta? Cadastre-se"
-              : "Já tem conta? Entre"}
+              ? "NÃ£o tem conta? Cadastre-se"
+              : "JÃ¡ tem conta? Entre"}
           </button>
         </div>
       </motion.div>

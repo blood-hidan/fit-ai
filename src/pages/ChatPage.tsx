@@ -1,238 +1,252 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, Send, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Bot, ChevronDown, Loader2, MessageSquarePlus, Send, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
 import { toast } from "@/hooks/use-toast";
 
 type Msg = { role: "user" | "assistant"; content: string };
-
+type CoachConversation = { id: string; title: string; updated_at: string };
 const suggestions = [
   "Como melhorar minha postura no agachamento?",
   "O que comer antes do treino?",
-  "Sugira um aquecimento de 10 min",
-  "Como aumentar massa muscular rápido?",
+  "Sugira um aquecimento de 10 minutos",
+  "Como aumentar massa muscular com segurança?",
 ];
 
 export default function ChatPage() {
   const { user } = useAuth();
-  const { profile } = useProfile();
+  const [conversations, setConversations] = useState<CoachConversation[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Load history
+  const loadConversations = useCallback(async (preferredId?: string | null) => {
+    if (!user) return;
+    const { data, error } = await supabase.from("coach_conversations")
+      .select("id,title,updated_at").eq("user_id", user.id).order("updated_at", { ascending: false });
+    if (error) {
+      toast({ title: "Não foi possível carregar as conversas", variant: "destructive" });
+      return;
+    }
+    const list = (data || []) as CoachConversation[];
+    setConversations(list);
+    const selectedId = preferredId ?? activeId;
+    const nextActive = list.find((item) => item.id === selectedId)?.id ?? list[0]?.id ?? null;
+    setActiveId(nextActive);
+  }, [user, activeId]);
+
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("chat_messages")
-      .select("role,content")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(100)
-      .then(({ data }) => {
-        if (data) setMessages(data as Msg[]);
-      });
+    let cancelled = false;
+    const initialize = async () => {
+      setLoadingHistory(true);
+      const { data, error } = await supabase.from("coach_conversations")
+        .select("id,title,updated_at").eq("user_id", user.id).order("updated_at", { ascending: false });
+      if (cancelled) return;
+      if (error) {
+        toast({ title: "Não foi possível carregar as conversas", variant: "destructive" });
+        setLoadingHistory(false);
+        return;
+      }
+      let list = (data || []) as CoachConversation[];
+      if (list.length === 0) {
+        const { data: created, error: createError } = await supabase.from("coach_conversations")
+          .insert({ user_id: user.id, title: "Nova conversa" }).select("id,title,updated_at").single();
+        if (createError) {
+          toast({ title: "Não foi possível iniciar o Coach", variant: "destructive" });
+          setLoadingHistory(false);
+          return;
+        }
+        list = [created as CoachConversation];
+      }
+      if (!cancelled) {
+        setConversations(list);
+        setActiveId(list[0].id);
+        setLoadingHistory(false);
+      }
+    };
+    void initialize();
+    return () => { cancelled = true; };
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !activeId) { setMessages([]); return; }
+    let cancelled = false;
+    const load = async () => {
+      setLoadingHistory(true);
+      const { data, error } = await supabase.from("chat_messages")
+        .select("role,content").eq("user_id", user.id).eq("conversation_id", activeId)
+        .order("created_at", { ascending: true }).limit(100);
+      if (!cancelled) {
+        if (error) toast({ title: "Não foi possível abrir esta conversa", variant: "destructive" });
+        setMessages((data || []) as Msg[]);
+        setLoadingHistory(false);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [user, activeId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
+  const createConversation = async () => {
+    if (!user || loading) return;
+    const { data, error } = await supabase.from("coach_conversations")
+      .insert({ user_id: user.id, title: "Nova conversa" }).select("id,title,updated_at").single();
+    if (error) {
+      toast({ title: "Não foi possível criar uma conversa", variant: "destructive" });
+      return;
+    }
+    const conversation = data as CoachConversation;
+    setConversations((items) => [conversation, ...items]);
+    setActiveId(conversation.id);
+    setMessages([]);
+    setHistoryOpen(false);
+  };
+
   const send = async (text: string) => {
-    if (!text.trim() || loading || !user) return;
-    const userMsg: Msg = { role: "user", content: text.trim() };
-    const next = [...messages, userMsg];
-    setMessages(next);
+    const trimmed = text.trim();
+    if (!trimmed || loading || !user || !activeId) return;
+    setMessages((items) => [...items, { role: "user", content: trimmed }]);
     setInput("");
     setLoading(true);
-
-    // Persist user message
-    supabase.from("chat_messages").insert({ user_id: user.id, role: "user", content: userMsg.content });
-
-    let acc = "";
-    const upsert = (chunk: string) => {
-      acc += chunk;
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant") {
-          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: acc } : m));
-        }
-        return [...prev, { role: "assistant", content: acc }];
+    let answer = "";
+    const updateAnswer = (chunk: string) => {
+      answer += chunk;
+      setMessages((items) => {
+        const last = items[items.length - 1];
+        return last?.role === "assistant"
+          ? items.map((item, index) => index === items.length - 1 ? { ...item, content: answer } : item)
+          : [...items, { role: "assistant", content: answer }];
       });
     };
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-fitness`;
-      const resp = await fetch(url, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-fitness`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ messages: next.slice(-30), profile }),
+        body: JSON.stringify({ conversation_id: activeId, message: trimmed }),
       });
-
-      if (!resp.ok || !resp.body) {
-        if (resp.status === 429) toast({ title: "Muitas requisições", description: "Tente novamente em instantes.", variant: "destructive" });
-        else if (resp.status === 402) toast({ title: "Créditos esgotados", description: "Adicione créditos no workspace.", variant: "destructive" });
-        else toast({ title: "Erro no chat", variant: "destructive" });
-        setLoading(false);
-        return;
+      if (!response.ok || !response.body) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || (response.status === 429 ? "Limite de uso atingido. Tente novamente mais tarde." : "Não foi possível obter uma resposta do Coach."));
       }
 
-      const reader = resp.body.getReader();
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buf = "";
-      let done = false;
-      while (!done) {
-        const r = await reader.read();
-        if (r.done) break;
-        buf += decoder.decode(r.value, { stream: true });
-        let idx: number;
-        while ((idx = buf.indexOf("\n")) !== -1) {
-          let line = buf.slice(0, idx);
-          buf = buf.slice(idx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const json = line.slice(6).trim();
-          if (json === "[DONE]") { done = true; break; }
+      let buffer = "";
+      let streamFailed = false;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const event of events) {
+          const line = event.split("\n").find((entry) => entry.startsWith("data: "));
+          if (!line) continue;
           try {
-            const parsed = JSON.parse(json);
-            const c = parsed.choices?.[0]?.delta?.content;
-            if (c) upsert(c);
-          } catch {
-            buf = line + "\n" + buf;
-            break;
-          }
+            const payload = JSON.parse(line.slice(6));
+            if (payload.type === "response.output_text.delta" && typeof payload.delta === "string") updateAnswer(payload.delta);
+            if (payload.type === "error" || payload.type === "response.failed") streamFailed = true;
+          } catch { /* Ignore incomplete or non-JSON SSE frames. */ }
         }
       }
-
-      if (acc) {
-        await supabase.from("chat_messages").insert({ user_id: user.id, role: "assistant", content: acc });
-      }
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Erro de conexão", variant: "destructive" });
+      if (streamFailed || !answer.trim()) throw new Error("O Coach não concluiu a resposta. Tente novamente.");
+      await loadConversations(activeId);
+    } catch (error) {
+      setMessages((items) => items.filter((item) => item.role !== "assistant" || item.content !== answer));
+      toast({ title: "Erro no Coach", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const clearChat = async () => {
-    if (!user) return;
-    await supabase.from("chat_messages").delete().eq("user_id", user.id);
-    setMessages([]);
-    toast({ title: "Histórico limpo" });
-  };
+  const activeConversation = conversations.find((item) => item.id === activeId);
 
   return (
     <div className="min-h-screen flex flex-col pb-24 max-w-lg mx-auto">
-      <header className="px-4 pt-6 pb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-neon">
+      <header className="px-4 pt-6 pb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-primary flex items-center justify-center shadow-neon">
             <Bot size={20} className="text-primary-foreground" />
           </div>
-          <div>
+          <button onClick={() => setHistoryOpen((open) => !open)} className="text-left min-w-0" aria-expanded={historyOpen}>
             <h1 className="font-bold font-display">MultiFit Coach</h1>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--neon-green))]" /> Online • IA
+            <p className="text-[11px] text-muted-foreground truncate max-w-48 flex items-center gap-1">
+              {activeConversation?.title || "Nova conversa"}<ChevronDown size={12} />
             </p>
-          </div>
-        </div>
-        {messages.length > 0 && (
-          <button onClick={clearChat} className="p-2 text-muted-foreground hover:text-destructive transition-colors">
-            <Trash2 size={16} />
           </button>
-        )}
+        </div>
+        <button onClick={createConversation} disabled={loading} aria-label="Criar nova conversa" title="Nova conversa"
+          className="p-2 rounded-xl text-primary hover:bg-secondary disabled:opacity-50">
+          <MessageSquarePlus size={20} />
+        </button>
       </header>
 
+      {historyOpen && (
+        <div className="mx-4 mb-2 max-h-56 overflow-y-auto rounded-xl border border-border bg-background shadow-lg" role="listbox" aria-label="Conversas do Coach">
+          {conversations.map((conversation) => (
+            <button key={conversation.id} onClick={() => { setActiveId(conversation.id); setHistoryOpen(false); }}
+              className={`w-full text-left px-4 py-3 text-sm border-b last:border-0 border-border/60 truncate ${conversation.id === activeId ? "bg-secondary text-primary" : "hover:bg-secondary/60"}`}>
+              {conversation.title}
+            </button>
+          ))}
+          <button onClick={createConversation} className="w-full text-left px-4 py-3 text-sm text-primary flex items-center gap-2">
+            <MessageSquarePlus size={15} /> Nova conversa
+          </button>
+        </div>
+      )}
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 space-y-3 pb-4">
-        {messages.length === 0 && (
+        {loadingHistory && <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-primary" /></div>}
+        {!loadingHistory && messages.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-5 mt-4">
             <Sparkles size={22} className="text-primary mb-2" />
             <p className="text-sm font-medium mb-1">Olá! Sou seu coach pessoal.</p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Tire dúvidas sobre treino, nutrição, sono e recuperação. Suas respostas usam seu perfil para serem personalizadas.
-            </p>
+            <p className="text-xs text-muted-foreground mb-4">Converse sobre treino, nutrição, sono e recuperação. Cada conversa fica salva no seu histórico.</p>
             <div className="space-y-2">
-              {suggestions.map(s => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="w-full text-left text-xs bg-secondary hover:bg-secondary/80 px-3 py-2.5 rounded-xl transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
+              {suggestions.map((suggestion) => <button key={suggestion} onClick={() => void send(suggestion)}
+                className="w-full text-left text-xs bg-secondary hover:bg-secondary/80 px-3 py-2.5 rounded-xl transition-colors">{suggestion}</button>)}
             </div>
           </motion.div>
         )}
-
-        {messages.map((m, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                m.role === "user"
-                  ? "bg-gradient-primary text-primary-foreground rounded-br-sm"
-                  : "glass rounded-bl-sm"
-              }`}
-            >
-              {m.role === "assistant" ? (
-                <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-strong:text-primary">
-                  <ReactMarkdown>{m.content}</ReactMarkdown>
-                </div>
-              ) : (
-                <p>{m.content}</p>
-              )}
+        {messages.map((message, index) => (
+          <motion.div key={`${activeId}-${index}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${message.role === "user" ? "bg-gradient-primary text-primary-foreground rounded-br-sm" : "glass rounded-bl-sm"}`}>
+              {message.role === "assistant" ? <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-strong:text-primary"><ReactMarkdown>{message.content}</ReactMarkdown></div> : <p>{message.content}</p>}
             </div>
           </motion.div>
         ))}
-
-        {loading && messages[messages.length - 1]?.role === "user" && (
-          <div className="flex justify-start">
-            <div className="glass rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
-              <Loader2 size={14} className="animate-spin text-primary" />
-              <span className="text-xs text-muted-foreground">Pensando...</span>
-            </div>
-          </div>
-        )}
+        {loading && <div className="flex justify-start"><div className="glass rounded-2xl px-4 py-3 flex items-center gap-2"><Loader2 size={14} className="animate-spin text-primary" /><span className="text-xs text-muted-foreground">Pensando...</span></div></div>}
       </div>
 
-      <form
-        onSubmit={e => { e.preventDefault(); send(input); }}
-        className="fixed bottom-[68px] left-0 right-0 z-40 px-4 py-2 bg-background/95 backdrop-blur-xl border-t border-border/50"
-      >
+      <form onSubmit={(event) => { event.preventDefault(); void send(input); }} className="fixed bottom-[68px] left-0 right-0 z-40 px-4 py-2 bg-background/95 backdrop-blur-xl border-t border-border/50">
         <div className="max-w-lg mx-auto flex gap-2">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Pergunte ao seu coach..."
-            disabled={loading}
-            className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
-            className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center disabled:opacity-50 shadow-neon"
-          >
+          <input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Pergunte ao seu coach..." disabled={loading || loadingHistory || !activeId}
+            maxLength={4000} className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60" />
+          <button type="submit" disabled={!input.trim() || loading || loadingHistory || !activeId} aria-label="Enviar mensagem"
+            className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center disabled:opacity-50 shadow-neon">
             {loading ? <Loader2 size={18} className="animate-spin text-primary-foreground" /> : <Send size={18} className="text-primary-foreground" />}
           </button>
         </div>
       </form>
-
       <BottomNav />
     </div>
   );
