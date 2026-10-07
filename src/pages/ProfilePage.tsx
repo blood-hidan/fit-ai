@@ -125,7 +125,7 @@ export default function ProfilePage() {
   const handleAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       toast({ title: "Selecione uma imagem", variant: "destructive" });
       return;
     }

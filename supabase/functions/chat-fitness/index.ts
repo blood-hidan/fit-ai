@@ -1,4 +1,6 @@
 // Streaming fitness chatbot via Lovable AI Gateway
+import { consumeAiRateLimit } from "../_shared/rate-limit.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -9,9 +11,51 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
-    const { messages, profile } = await req.json();
+    if (Number(req.headers.get("content-length") ?? 0) > 64_000) {
+      return new Response(JSON.stringify({ error: "Requisição muito grande" }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const body = await req.text();
+    if (new TextEncoder().encode(body).byteLength > 64_000) {
+      return new Response(JSON.stringify({ error: "Requisição muito grande" }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { messages, profile } = JSON.parse(body);
+    if (
+      !Array.isArray(messages) || messages.length === 0 || messages.length > 30 ||
+      messages.some((message) =>
+        !message || !["user", "assistant"].includes(message.role) ||
+        typeof message.content !== "string" || message.content.length === 0 ||
+        message.content.length > 4_000
+      )
+    ) {
+      return new Response(JSON.stringify({ error: "Mensagens inválidas" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const rateLimit = await consumeAiRateLimit("chat-fitness", req.headers.get("authorization"));
+    if (rateLimit.unavailable) {
+      return new Response(JSON.stringify({ error: "Serviço temporariamente indisponível" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!rateLimit.allowed) {
+      return new Response(JSON.stringify({ error: "Limite de uso atingido. Tente novamente mais tarde." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -43,7 +87,7 @@ Diretrizes:
           model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: systemPrompt },
-            ...messages,
+            ...messages.slice(-30),
           ],
           stream: true,
         }),
@@ -63,8 +107,8 @@ Diretrizes:
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      const t = await response.text();
-      console.error("AI gateway error", response.status, t);
+      await response.text();
+      console.error("AI gateway error", response.status);
       return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -75,9 +119,9 @@ Diretrizes:
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
-    console.error("chat-fitness error", e);
+    console.error("chat-fitness error", e instanceof Error ? e.name : "UnknownError");
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      JSON.stringify({ error: "Erro interno no chat" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

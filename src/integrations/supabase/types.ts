@@ -289,75 +289,95 @@ export type Database = {
           },
         ]
       }
-      profiles: {
+      profile_private: {
         Row: {
           age: number | null
           allergies: string | null
-          avatar_url: string | null
-          bio: string | null
-          body_type: string | null
-          created_at: string
           dietary_restrictions: string | null
-          goal: string | null
           height: number | null
-          id: string
-          is_private: boolean
-          level: string | null
-          name: string
           sleep_hours: number | null
           sleep_quality: string | null
-          training_time: string | null
-          updated_at: string
           user_id: string
-          username: string
-          weekly_frequency: number | null
           weight: number | null
         }
         Insert: {
           age?: number | null
           allergies?: string | null
-          avatar_url?: string | null
-          bio?: string | null
-          body_type?: string | null
-          created_at?: string
           dietary_restrictions?: string | null
-          goal?: string | null
           height?: number | null
-          id?: string
-          is_private?: boolean
-          level?: string | null
-          name?: string
           sleep_hours?: number | null
           sleep_quality?: string | null
-          training_time?: string | null
-          updated_at?: string
           user_id: string
-          username: string
-          weekly_frequency?: number | null
           weight?: number | null
         }
         Update: {
           age?: number | null
           allergies?: string | null
+          dietary_restrictions?: string | null
+          height?: number | null
+          sleep_hours?: number | null
+          sleep_quality?: string | null
+          user_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_private_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          body_type: string | null
+          created_at: string
+          goal: string | null
+          id: string
+          is_private: boolean
+          level: string | null
+          name: string
+          training_time: string | null
+          updated_at: string
+          user_id: string
+          username: string
+          weekly_frequency: number | null
+        }
+        Insert: {
           avatar_url?: string | null
           bio?: string | null
           body_type?: string | null
           created_at?: string
-          dietary_restrictions?: string | null
           goal?: string | null
-          height?: number | null
           id?: string
           is_private?: boolean
           level?: string | null
           name?: string
-          sleep_hours?: number | null
-          sleep_quality?: string | null
+          training_time?: string | null
+          updated_at?: string
+          user_id: string
+          username: string
+          weekly_frequency?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          body_type?: string | null
+          created_at?: string
+          goal?: string | null
+          id?: string
+          is_private?: boolean
+          level?: string | null
+          name?: string
           training_time?: string | null
           updated_at?: string
           user_id?: string
           username?: string
           weekly_frequency?: number | null
-          weight?: number | null
         }
         Relationships: []
       }

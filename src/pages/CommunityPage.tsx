@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { createCommunityMediaUrlMap } from "@/lib/community-media";
 
 interface ProfileLite {
   user_id: string;
@@ -32,7 +33,8 @@ interface PostRow {
 
 interface FeedPost extends PostRow {
   author?: ProfileLite;
-  original?: (PostRow & { author?: ProfileLite }) | null;
+  original?: (PostRow & { author?: ProfileLite; signed_media_url?: string }) | null;
+  signed_media_url?: string;
   liked?: boolean;
 }
 
@@ -46,6 +48,7 @@ interface CommentRow {
 }
 
 const MAX_FILE_MB = 25;
+const ALLOWED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"]);
 
 export default function CommunityPage() {
   const { user } = useAuth();
@@ -111,17 +114,26 @@ export default function CommunityPage() {
       (extra ?? []).forEach((p) => profileMap.set(p.user_id, p as ProfileLite));
     }
 
-    const originalMap = new Map(((originalsData as PostRow[]) ?? []).map((p) => [p.id, p]));
+    const originalRows = (originalsData as PostRow[]) ?? [];
+    const mediaUrlMap = await createCommunityMediaUrlMap(
+      [...(postsData ?? []), ...originalRows].map((post) => post.media_url ?? ""),
+    );
+    const originalMap = new Map(originalRows.map((p) => [p.id, p]));
     const likedIds = new Set((likedSet.data ?? []).map((l: any) => l.post_id));
 
     const feed: FeedPost[] = (postsData ?? []).map((p) => ({
       ...(p as PostRow),
+      signed_media_url: p.media_url ? mediaUrlMap.get(p.media_url) : undefined,
       author: profileMap.get(p.user_id),
       liked: likedIds.has(p.id),
       original: p.original_post_id
         ? (() => {
             const orig = originalMap.get(p.original_post_id!);
-            return orig ? { ...orig, author: profileMap.get(orig.user_id) } : null;
+            return orig ? {
+              ...orig,
+              author: profileMap.get(orig.user_id),
+              signed_media_url: orig.media_url ? mediaUrlMap.get(orig.media_url) : undefined,
+            } : null;
           })()
         : null,
     }));
@@ -135,6 +147,10 @@ export default function CommunityPage() {
     if (!f) return;
     if (f.size > MAX_FILE_MB * 1024 * 1024) {
       toast.error(`Arquivo muito grande (máx ${MAX_FILE_MB}MB)`);
+      return;
+    }
+    if (!ALLOWED_MEDIA_TYPES.has(f.type)) {
+      toast.error("Formato não suportado. Use JPEG, PNG, WebP, MP4 ou WebM.");
       return;
     }
     setFile(f);
@@ -170,8 +186,7 @@ export default function CommunityPage() {
           upsert: false,
         });
         if (upErr) throw upErr;
-        const { data } = supabase.storage.from("community-media").getPublicUrl(path);
-        media_url = data.publicUrl;
+        media_url = path;
         media_type = file.type.startsWith("video") ? "video" : "image";
       }
 
@@ -421,11 +436,11 @@ export default function CommunityPage() {
                 </div>
               </header>
 
-              {display.media_url && display.media_type === "image" && (
-                <img src={display.media_url} alt="" className="w-full max-h-[520px] object-cover bg-secondary" loading="lazy" />
+              {display.signed_media_url && display.media_type === "image" && (
+                <img src={display.signed_media_url} alt="" className="w-full max-h-[520px] object-cover bg-secondary" loading="lazy" />
               )}
-              {display.media_url && display.media_type === "video" && (
-                <video src={display.media_url} controls playsInline className="w-full max-h-[520px] bg-black" />
+              {display.signed_media_url && display.media_type === "video" && (
+                <video src={display.signed_media_url} controls playsInline className="w-full max-h-[520px] bg-black" />
               )}
 
               {display.caption && (

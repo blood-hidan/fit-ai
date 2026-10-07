@@ -67,14 +67,17 @@ export default function ChatPage() {
     };
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sua sessão expirou. Entre novamente.");
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-fitness`;
       const resp = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ messages: next, profile }),
+        body: JSON.stringify({ messages: next.slice(-30), profile }),
       });
 
       if (!resp.ok || !resp.body) {

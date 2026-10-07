@@ -1,4 +1,6 @@
 // Generate personalized nutrition plan via Lovable AI
+import { consumeAiRateLimit } from "../_shared/rate-limit.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -9,9 +11,48 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
 
   try {
-    const { profile, calories, macros } = await req.json();
+    if (Number(req.headers.get("content-length") ?? 0) > 16_000) {
+      return new Response(JSON.stringify({ error: "Requisição muito grande" }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const body = await req.text();
+    if (new TextEncoder().encode(body).byteLength > 16_000) {
+      return new Response(JSON.stringify({ error: "Requisição muito grande" }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { profile, calories, macros } = JSON.parse(body);
+    if (
+      !profile || typeof profile !== "object" ||
+      !Number.isFinite(calories) || calories < 500 || calories > 10_000 ||
+      !macros || ![macros.protein, macros.carbs, macros.fat].every(Number.isFinite)
+    ) {
+      return new Response(JSON.stringify({ error: "Perfil ou metas inválidas" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const rateLimit = await consumeAiRateLimit("generate-nutrition", req.headers.get("authorization"));
+    if (rateLimit.unavailable) {
+      return new Response(JSON.stringify({ error: "Serviço temporariamente indisponível" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!rateLimit.allowed) {
+      return new Response(JSON.stringify({ error: "Limite de uso atingido. Tente novamente mais tarde." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -70,8 +111,8 @@ Retorne 5 refeições (café da manhã, lanche manhã, almoço, lanche tarde, ja
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      const t = await response.text();
-      console.error("AI gateway error", response.status, t);
+      await response.text();
+      console.error("AI gateway error", response.status);
       return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -85,9 +126,9 @@ Retorne 5 refeições (café da manhã, lanche manhã, almoço, lanche tarde, ja
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("generate-nutrition error", e);
+    console.error("generate-nutrition error", e instanceof Error ? e.name : "UnknownError");
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      JSON.stringify({ error: "Erro interno ao gerar o plano" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
   }

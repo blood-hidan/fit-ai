@@ -41,7 +41,14 @@ export function useProfile() {
       .select("*")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (!error && data) setProfile(data as DBProfile);
+    if (!error && data) {
+      const { data: privateData } = await supabase
+        .from("profile_private")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setProfile({ ...data, ...privateData } as DBProfile);
+    }
     setLoading(false);
   }, [user]);
 
@@ -52,11 +59,43 @@ export function useProfile() {
   const updateProfile = async (updates: Partial<DBProfile>) => {
     if (!user) return;
     setProfile(prev => (prev ? { ...prev, ...updates } : prev));
-    const { error } = await supabase
-      .from("profiles")
-      .update(updates)
-      .eq("user_id", user.id);
-    if (error) console.error(error);
+
+    const {
+      age,
+      weight,
+      height,
+      sleep_hours,
+      sleep_quality,
+      allergies,
+      dietary_restrictions,
+      ...publicUpdates
+    } = updates;
+    const privateUpdates = {
+      age,
+      weight,
+      height,
+      sleep_hours,
+      sleep_quality,
+      allergies,
+      dietary_restrictions,
+    };
+
+    const writes = [];
+    if (Object.keys(publicUpdates).length > 0) {
+      writes.push(
+        supabase.from("profiles").update(publicUpdates).eq("user_id", user.id),
+      );
+    }
+    if (Object.values(privateUpdates).some(value => value !== undefined)) {
+      writes.push(
+        supabase.from("profile_private").update(privateUpdates).eq("user_id", user.id),
+      );
+    }
+
+    const results = await Promise.all(writes);
+    results.forEach(({ error }) => {
+      if (error) console.error(error);
+    });
   };
 
   return { profile, loading, updateProfile, reload: load };

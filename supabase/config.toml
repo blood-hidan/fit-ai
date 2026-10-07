@@ -1,1 +1,7 @@
 project_id = "hvikgsaecnkvizcclynj"
+
+[functions.chat-fitness]
+verify_jwt = true
+
+[functions.generate-nutrition]
+verify_jwt = true

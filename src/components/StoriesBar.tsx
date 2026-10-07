@@ -4,6 +4,7 @@ import { Plus, X, ImagePlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { createCommunityMediaUrlMap } from "@/lib/community-media";
 
 type StoryRow = {
   id: string;
@@ -34,6 +35,7 @@ export default function StoriesBar() {
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: true });
     if (!stories) return;
+    const mediaUrlMap = await createCommunityMediaUrlMap(stories.map((story) => story.media_url));
     const ids = Array.from(new Set(stories.map((s) => s.user_id)));
     const { data: profs } = await supabase
       .from("profiles")
@@ -42,7 +44,8 @@ export default function StoriesBar() {
     const byUser = new Map<string, Author>();
     (profs ?? []).forEach((p) => byUser.set(p.user_id, p as Author));
     const map = new Map<string, Group>();
-    (stories as StoryRow[]).forEach((s) => {
+    (stories as StoryRow[]).forEach((rawStory) => {
+      const s = { ...rawStory, media_url: mediaUrlMap.get(rawStory.media_url) ?? "" };
       const author = byUser.get(s.user_id) ?? { user_id: s.user_id, username: null, name: "Atleta", avatar_url: null };
       if (!map.has(s.user_id)) map.set(s.user_id, { author, stories: [] });
       map.get(s.user_id)!.stories.push(s);
@@ -63,16 +66,23 @@ export default function StoriesBar() {
 
   const handleUpload = async () => {
     if (!file || !user) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("O arquivo deve ter no máximo 25 MB.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"].includes(file.type)) {
+      toast.error("Formato não suportado. Use JPEG, PNG, WebP, MP4 ou WebM.");
+      return;
+    }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${user.id}/stories/${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("community-media").upload(path, file);
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("community-media").getPublicUrl(path);
       const isVideo = file.type.startsWith("video");
       const { error } = await supabase.from("stories").insert({
-        user_id: user.id, media_url: pub.publicUrl,
+        user_id: user.id, media_url: path,
         media_type: isVideo ? "video" : "image", caption,
       });
       if (error) throw error;
